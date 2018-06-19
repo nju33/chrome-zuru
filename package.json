@@ -1,0 +1,16 @@
+{
+  "name": "chrome-zuru",
+  "version": "0.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "private": true,
+  "workspaces": [
+    "ext/src/*"
+  ],
+  "dependencies": {
+    "dev": "yarn ba.dev",
+    "build": "yarn ba.buuild",
+    "ba.dev": "cd ext/src/browser_action; yarn dev",
+    "ba.build": "cd ext/src/browser_action; yarn build"
+  }
+}

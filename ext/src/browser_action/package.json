@@ -1,0 +1,14 @@
+{
+  "name": "browser_action",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "parcel": "^1.9.2",
+    "ws": "^5.2.0"
+  },
+  "scripts": {
+    "dev": "parcel watch browser_action.html",
+    "build": "parcel build browser_action.html"
+  }
+}
