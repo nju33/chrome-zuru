@@ -1,5 +1,5 @@
 {
-  "name": "browser_action",
+  "name": "bg",
   "version": "1.0.0",
   "main": "index.js",
   "license": "MIT",
@@ -8,8 +8,8 @@
     "ws": "^5.2.0"
   },
   "scripts": {
-    "dev": "parcel watch browser_action.html --public-url ./",
+    "dev": "parcel watch background.html --public-url ./",
     "prebuild": "rm -rf .cache dist",
-    "build": "parcel build browser_action.html --public-url ./"
+    "build": "parcel build background.html --public-url ./"
   }
 }

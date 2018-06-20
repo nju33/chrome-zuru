@@ -11,7 +11,7 @@
   },
   "default_locale": "en",
   "background": {
-    "page": "src/bg/background.html",
+    "page": "src/bg/dist/background.html",
     "persistent": true
   },
   "browser_action": {
@@ -21,6 +21,7 @@
   },
   "permissions": [
     "tabs",
+    "storage",
     "https://*/*"
   ],
   "content_scripts": [
@@ -29,7 +30,7 @@
         "https://*/*"
       ],
       "js": [
-        "src/inject/inject.js"
+        "src/inject/dist/inject.js"
       ]
     }
   ]

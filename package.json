@@ -7,10 +7,17 @@
   "workspaces": [
     "ext/src/*"
   ],
-  "dependencies": {
-    "dev": "yarn ba.dev",
-    "build": "yarn ba.buuild",
+  "scripts": {
+    "dev": "npm-run-all --parallel bg.dev ba.dev i.dev",
+    "build": "npm-run-all --parallel bg.build ba.build i.build",
+    "bg.dev": "cd ext/src/bg; yarn dev",
+    "bg.build": "cd ext/src/bg; yarn build",
     "ba.dev": "cd ext/src/browser_action; yarn dev",
-    "ba.build": "cd ext/src/browser_action; yarn build"
+    "ba.build": "cd ext/src/browser_action; yarn build",
+    "i.dev": "cd ext/src/inject; yarn dev",
+    "i.build": "cd ext/src/inject; yarn build"
+  },
+  "devDependencies": {
+    "npm-run-all": "^4.1.3"
   }
 }

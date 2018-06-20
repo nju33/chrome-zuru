@@ -1,13 +1,30 @@
-chrome.extension.sendMessage({}, function(response) {
-	var readyStateCheckInterval = setInterval(function() {
-	if (document.readyState === "complete") {
-		clearInterval(readyStateCheckInterval);
+// import WebSocket from 'ws';
 
-		// ----------------------------------------------------------
-		// This part of the script triggers when page is done loading
-		console.log("Hello. This message was sent from scripts/inject.js");
-		// ----------------------------------------------------------
+// const parseJson = cd => data => {
+// 	cb(JSON.parse(data));
+// }
 
-	}
-	}, 10);
-});
+// const handleScroll = y => {
+// 	document.scrollingElement.scrollTop = y;
+// }
+
+// const listenWebSocket = portNumber => {
+// 	const ws = new WebSocket(`ws://localhost:${portNumber}`);
+// 	ws.on('message', parseJson(action => {
+// 		switch (action.type) {
+// 			case 'SCROLL':
+// 				handleScroll(action.scrollY);
+// 			default:
+// 				return;
+// 		}
+// 	}));
+// }
+
+// chrome.runtime.onMessage.addListener((action) => {
+// 	switch (action.type) {
+// 		case 'LISTEN_WEB_SOCKET':
+// 			listenWebSocket(action.portNumber);
+// 		defualt:
+// 			return;
+// 	}
+// })
