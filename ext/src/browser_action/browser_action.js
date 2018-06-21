@@ -33,16 +33,15 @@ const onSubmit = ev => {
   // const ws = new WebSocket(`ws://localhost:${portNumber}`);
   // ws.on('message', parseJson(action => {
   // }))
-  // chrome.tabs.query({active: true, currentWindow: true}, tabs => {
-  //   chrome.tabs.sendMessage(tabs[0].id, {type: 'LISTEN_WEB_SOCKET', portNumber}, () => {});
-  // });
-  console.log(123);
-  chrome.storage.local.set({
-    portNumber
-  }, () => {
-    setTimeout(() => {
-      chrome.storage.local.clear(() => {});
-    }, 1000);
+  chrome.tabs.query({active: true, currentWindow: true}, tabs => {
+    chrome.tabs.sendMessage(tabs[0].id, {type: 'LISTEN_WEB_SOCKET', portNumber}, () => {});
   });
+  // chrome.storage.local.set({
+  //   portNumber
+  // }, () => {
+  //   setTimeout(() => {
+  //     chrome.storage.local.clear(() => {});
+  //   }, 1000);
+  // });
 };
 document.getElementById('form').addEventListener('submit', onSubmit);
