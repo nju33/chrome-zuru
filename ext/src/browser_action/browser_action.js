@@ -1,5 +1,3 @@
-import WebSocket from 'ws';
-
 const initialize = () => {
   document.getElementById('port-input').value = '33322';
 };
@@ -8,6 +6,16 @@ document.addEventListener('DOMContentLoaded', initialize);
 const parseJson = cb => jsonStr => {
   cd(JSON.parse(jsonStr));
 };
+
+const closePopup = () => {
+  window.close();
+}
+
+const listenInCurrentTab = () => {
+  chrome.tabs.query({active: true, currentWindow: true}, tabs => {
+    chrome.tabs.sendMessage(tabs[0].id, {type: 'LISTEN_WEB_SOCKET', portNumber}, closePopup);
+  });
+}
 
 const onSubmit = ev => {
   ev.preventDefault();
@@ -25,23 +33,7 @@ const onSubmit = ev => {
   if (portNumber > 65535) {
     return;
   }
-
-
-  // chrome.runtime.sendMessage({greeting: "hello"}, function(response) {
-  //   console.log(response.farewell);
-  // });
-  // const ws = new WebSocket(`ws://localhost:${portNumber}`);
-  // ws.on('message', parseJson(action => {
-  // }))
-  chrome.tabs.query({active: true, currentWindow: true}, tabs => {
-    chrome.tabs.sendMessage(tabs[0].id, {type: 'LISTEN_WEB_SOCKET', portNumber}, () => {});
-  });
-  // chrome.storage.local.set({
-  //   portNumber
-  // }, () => {
-  //   setTimeout(() => {
-  //     chrome.storage.local.clear(() => {});
-  //   }, 1000);
-  // });
 };
+
 document.getElementById('form').addEventListener('submit', onSubmit);
+document.getElementById('port-input').focus();

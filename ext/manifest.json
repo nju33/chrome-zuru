@@ -11,17 +11,21 @@
   },
   "default_locale": "en",
   "background": {
-    "page": "src/bg/dist/background.html",
+    "page": "src/bg/background.html",
     "persistent": true
   },
   "browser_action": {
-    "default_icon": "icons/icon19.png",
-    "default_title": "zuru",
-    "default_popup": "src/browser_action/dist/browser_action.html"
+    "default_icon": "icons/icon19!inactive.png",
+    "default_title": "zuru"
+  },
+  "options_ui": {
+    "page": "src/options/options.html",
+    "open_in_tab": false
   },
   "permissions": [
     "tabs",
     "storage",
+    "http://*/*",
     "https://*/*"
   ],
   "content_scripts": [
@@ -30,7 +34,7 @@
         "https://*/*"
       ],
       "js": [
-        "src/inject/dist/inject.js"
+        "src/inject/inject.js"
       ]
     }
   ]

@@ -1,51 +1,50 @@
-// import WebSocket from 'ws';
+const throttle = (() => {
+	let tid = null;
 
-// const parseJson = cd => data => {
-// 	console.log(cb, data)
-// 	// cb(JSON.parse(data));
-// }
+	return (cb, msec) => {
+		if (tid !== null) {
+			return;
+		}
 
-const initializeWindowSize = dimension => {
-  chrome.runtime.sendMessage(
-    {type: 'INITIALIZE_WINDOW_SIZE', dimension},
-    () => {}
-  );
-};
+		tid = setTimeout(() => {
+			cb();
+			tid = null
+		}, msec)
+	};
+})();
 
-const changePosition = position => {
-  chrome.runtime.sendMessage({type: 'CHANGE_POSITION', position}, () => {});
-};
+const listenEvent = () => {
+	document.addEventListener('scroll', throttle(() => {
+		chrome.runtime.sendMessage({
+			type: 'SCROLL',
+			scrollY: document.scrollingElement.scrollTop
+		}, () => {});
+	}, 80));
+}
 
 const scroll = y => {
-  document.scrollingElement.scrollTop = y;
-};
+	document.scrollingElement.scrollTop = y;
+}
 
-const listenWebSocket = portNumber => {
-  const ws = new WebSocket(`ws://localhost:${portNumber}`);
-  ws.onmessage = ev => {
-    const action = JSON.parse(ev.data);
-    switch (action.type) {
-      case 'INITIALIZE_WINDOW_SIZE':
-        initializeWindowSize({
-          width: action.width,
-					height: action.height,
-					top: (action.position || {}).top,
-					left: (action.position || {}).left,
-        });
-      case 'CHANGE_POSITION':
-        changePosition(action.position);
-      case 'SCROLL':
-        scroll(action.scrollY);
-      default:
-        return;
-    }
-  };
-};
+const handleMessage = (() => {
+	let initial = true;
 
-chrome.runtime.onMessage.addListener(action => {
-  switch (action.type) {
-    case 'LISTEN_WEB_SOCKET':
-      listenWebSocket(action.portNumber);
-      defualt: return;
-  }
-});
+	return (action, _, sendResponse) => {
+		if (initial) {
+			listenEvent();
+			initial = false;
+		}
+
+		switch (action.type) {
+			case 'SCROLL':
+				scroll(action.scrollY);
+				break;
+			defualt: 
+				break;
+		}
+		
+		sendResponse();
+	};
+})();
+
+chrome.runtime.onMessage.addListener(handleMessage);

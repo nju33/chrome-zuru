@@ -4,8 +4,7 @@
   "main": "index.js",
   "license": "MIT",
   "dependencies": {
-    "parcel": "^1.9.2",
-    "ws": "^5.2.0"
+    "parcel": "^1.9.2"
   },
   "scripts": {
     "dev": "parcel watch inject.js",
