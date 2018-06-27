@@ -186,8 +186,16 @@ const process = async () => {
 
 chrome.tabs.onCreated.addListener(tab => {});
 
-chrome.tabs.onActivated.addListener(process);
-chrome.tabs.onUpdated.addListener((_, __, tab) => process(tab));
+chrome.tabs.onActivated.addListener(tab => {
+  process(tab).catch(err => {
+    console.log(err);
+  });
+});
+chrome.tabs.onUpdated.addListener((_, __, tab) => {
+  process(tab).catch(err => {
+    console.log(err);
+  });
+});
 
 const inactivate = async () => {
   if (typeof ws !== 'undefined' && ws.readyState === 1) {
@@ -210,6 +218,7 @@ const activate = async tab => {
   ws = new WebSocket('ws://localhost:33322');
   ws.onmessage = ev => {
     const action = JSON.parse(ev.data);
+    // console.log(action);
 
     handleAction(action);
   }
@@ -232,6 +241,7 @@ chrome.browserAction.onClicked.addListener(async tab => {
 });
 
 chrome.runtime.onMessage.addListener((action, _, sendResponse) => {
+  console.log(action);
   if (typeof ws !== 'undefined' && ws.readyState === 1) {
     ws.send(JSON.stringify(action));
   }

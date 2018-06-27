@@ -1,25 +1,23 @@
-const throttle = (() => {
-	let tid = null;
-
-	return (cb, msec) => {
-		if (tid !== null) {
-			return;
-		}
-
-		tid = setTimeout(() => {
-			cb();
-			tid = null
-		}, msec)
-	};
-})();
+const throttle = (func, limit) => {
+  let inThrottle
+  return function() {
+    const args = arguments
+    const context = this
+    if (!inThrottle) {
+      func.apply(context, args)
+      inThrottle = true
+      setTimeout(() => inThrottle = false, limit)
+    }
+  }
+}
 
 const listenEvent = () => {
 	document.addEventListener('scroll', throttle(() => {
 		chrome.runtime.sendMessage({
-			type: 'SCROLL',
+			type: 'CHROME_SCROLL',
 			scrollY: document.scrollingElement.scrollTop
 		}, () => {});
-	}, 80));
+	}, 15));
 }
 
 const scroll = y => {
