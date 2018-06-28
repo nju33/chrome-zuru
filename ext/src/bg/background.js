@@ -196,6 +196,25 @@ chrome.tabs.onUpdated.addListener((_, __, tab) => {
     console.log(err);
   });
 });
+chrome.windows.onFocusChanged.addListener(windowId => {
+  chrome.windows.get(windowId, window => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    if (!window.focused) {
+      return;
+    }
+
+    setTimeout(async () => {
+      const tab = await getCurrentTab();
+
+      process(tab).catch(err => {
+        console.log(err);
+      });
+    }, 3000)
+  }); 
+});
 
 const inactivate = async () => {
   if (typeof ws !== 'undefined' && ws.readyState === 1) {
@@ -241,7 +260,7 @@ chrome.browserAction.onClicked.addListener(async tab => {
 });
 
 chrome.runtime.onMessage.addListener((action, _, sendResponse) => {
-  console.log(action);
+  // console.log(action);
   if (typeof ws !== 'undefined' && ws.readyState === 1) {
     ws.send(JSON.stringify(action));
   }
