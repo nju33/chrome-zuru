@@ -1,25 +1,54 @@
-chrome.extension.onMessage.addListener((action, sender, sendResponse) => {
+/**
+ * @typedef {'INITIALIZE'|'CHANGE_POSITION'} ActionType
+ */
+
+/**
+ * 何もしない
+ */
+const noop = () => {};
+
+/**
+ * コンテンツページからメッセージが送られてきた時のハンドル
+ * @param {Object} action
+ * @property {ActionType} action.type
+ * @param {Function} sendResponse 完了を伝える
+ */
+const extensionOnMessage = (action, _, sendResponse) => {
   chrome.windows.getCurrent(currentWindow => {
     switch (action.type) {
+      // 送られてきたwindowステートで初期化
       case 'INITIALIZE': {
         const window = chrome.windows.update(
           currentWindow.id,
           action.windowState,
-          () => {
-            sendResponse();
-          }
+          sendResponse
         );
+        break;
       }
-      case 'CHANGE_POSITION':
-        chrome.windows.update(currentWindow.id, action.position, () => {
-          sendResponse();
-        });
-      default:
-        return sendResponse();
+      // 送られてきた位置情報で位置更新
+      case 'CHANGE_POSITION': {
+        chrome.windows.update(
+          currentWindow.id,
+          action.position,
+          sendResponse
+        );
+        break;
+      }
+      default: {
+        sendResponse();
+      }
     }
   });
-});
+};
+/**
+ * コンテンツページからメッセージが送られてきた時発火
+ */
+chrome.extension.onMessage.addListener(extensionOnMessage);
 
+/**
+ * 
+ * @param {Object} action 
+ */
 const handleAction = async action => {
   console.log('action: ', action);
   switch (action.type) {
@@ -46,20 +75,30 @@ const handleAction = async action => {
   }
 }
 
+/**
+ * 指定ミリ秒待つ
+ * @param {number} msec 待ち時間
+ */
 const wait = msec => {
   return new Promise(resolve => {
     setTimeout(resolve, msec);
   });
 };
 
+/**
+ * データの取得
+ * @return {Promise<Object>}
+ */
 const getState = () => {
   return new Promise(resolve => {
-    chrome.storage.local.get(null, value => {
-      resolve(value);
-    });
+    chrome.storage.local.get(null, resolve);
   });
 };
 
+/**
+ * データの保存
+ * @param {Object} obj
+ */
 const setState = obj => {
   return new Promise(resolve => {
     chrome.storage.local.set(obj, () => {
@@ -68,24 +107,41 @@ const setState = obj => {
   });
 };
 
+/**
+ * 今開いてるタブの取得
+ * @return {Promise<Object>}
+ */
 const getCurrentTab = () => {
   return new Promise(resolve => {
-    chrome.tabs.getSelected(null, tab => {
-      resolve(tab);
-    });
+    chrome.tabs.getSelected(null, resolve);
   });
 };
 
+/**
+ * zuruアプリ側のwindow状態を取得
+ * @return {Promise<Object>}
+ */
 const getWindow = async () => {
   const res = await fetch('http://localhost:33322/api/v1/window');
   return res.json();
 };
 
+/**
+ * zuruアプリで開ける画像一覧を取得
+ * @return {Promise<Object>}
+ */
 const getFiles = async () => {
   const res = await fetch('http://localhost:33322/api/v1/files');
   return res.json();
 };
 
+/**
+ * ファイル名のパース
+ * @param {string} filenameWithPath 
+ * @return {Object} data
+ * @property {string} data.filename
+ * @property {string} data.url
+ */
 const parseFilename = filenameWithPath => {
   const filename = filenameWithPath.match(/[^/]+$/)[0];
   const url = filename.replace(/_.*/, '');
@@ -96,6 +152,10 @@ const parseFilename = filenameWithPath => {
   };
 };
 
+/**
+ * URLをファイル名に変換
+ * @param {string} url 
+ */
 const formatUrl = url => {
   return url
     .replace(/https?:\/\//, '')
@@ -103,6 +163,10 @@ const formatUrl = url => {
     .replace(/!$/, '');
 };
 
+/**
+ * websocketの接続が開くまで待機
+ * @param {*} ws 
+ */
 const waitConnection = ws => {
   return new Promise(resolve => {
     const verify = () => {
@@ -119,40 +183,43 @@ const waitConnection = ws => {
   });
 };
 
-let ws;
+/**
+ * 現在のタブページを初期化
+ * @param {Tab} tab 
+ * @return {Tab}
+ */
+const tabInit = tab => {
+  chrome.tabs.sendMessage(tab.id, {type: '@@INIT'}, () => {});
+  return tab;
+}
 
+let ws;
 const process = async () => {
   if (typeof ws === 'undefined') {
     return;
   }
 
-  const tab = await getCurrentTab();
-  chrome.tabs.sendMessage(tab.id, {type: '@@INIT'}, () => {});
+  const tab = await getCurrentTab().then(tabInit);
   const formatedTabUrl = formatUrl(tab.url);
-  const files = await getFiles();
-
-  const file = (() => {
-    let target;
+  // ターゲットとなるファイル
+  const file = await getFiles().then(files => {
     for (const idx in files) {
       const {filename, url} = parseFilename(files[idx].filename);
-      console.log(formatedTabUrl, url);
       if (formatedTabUrl === url) {
-        target = files[idx];
-        break;
+        return files[idx];
       }
     }
-
-    return target;
-  })();
-
+  })
   if (typeof file === 'undefined') {
-    return;
+    throw new Error('ターゲットとなるファイルがありませんでした');
   }
 
   if (ws.readyState !== 1) {
-    return;
+    throw new Error('WebSocketとの接続ができません');
   }
 
+  // アクティベート化するファイル情報を
+  // zuruアプリへ送信
   ws.send(
     JSON.stringify({
       type: 'SELECT_FILE',
@@ -160,52 +227,67 @@ const process = async () => {
     })
   );
 
-  await wait(500);
-
-  const windowState = await getWindow();
-
-  chrome.windows.getCurrent(currentWindow => {
-    const window = chrome.windows.update(
-      currentWindow.id,
-      {
+  await getWindow().then(windowState => {
+    chrome.windows.getCurrent(currentWindow => {
+      const nextState = {
         width: Number(windowState.width),
         height: Number(windowState.height),
         left: Number(windowState.x),
         top: Number(windowState.y),
-      },
-      () => {}
-    );
-  });
+      };
 
-  ws.send(
-    JSON.stringify({
-      type: 'FOCUS_ZURU_APP'
-    })
-  );
+      chrome.windows.update(
+        currentWindow.id,
+        nextState,
+        () => ws.send(JSON.stringify({type: 'FOCUS_ZURU_APP'}))
+      );
+    });
+  });
 };
 
+/**
+ *  tabが作られた時
+ */
 chrome.tabs.onCreated.addListener(tab => {});
-
+/**
+ *  tabを選択した時
+ */
 chrome.tabs.onActivated.addListener(tab => {
   process(tab).catch(err => {
     console.log(err);
   });
 });
+/**
+ *  tabのURLが移動した時
+ */
 chrome.tabs.onUpdated.addListener((_, __, tab) => {
   process(tab).catch(err => {
     console.log(err);
   });
 });
+
+/**
+ * windowが削除される、または何かしらが原因でフォーカスが外れた時場合は、
+ * 無効と判断し、処理を終える
+ * 有効な場合はコールバックを実行
+ */
+const validWindow = cb => window => {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  if (!window.focused) {
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ *  windowが変わった時
+ */
 chrome.windows.onFocusChanged.addListener(windowId => {
-  chrome.windows.get(windowId, window => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    if (!window.focused) {
-      return;
-    }
-
+  chrome.windows.get(windowId, validWindow(() => {
     setTimeout(async () => {
       const tab = await getCurrentTab();
 
@@ -251,6 +333,9 @@ const activate = async tab => {
   await process(tab);
 };
 
+/**
+ *  右上の拡張アイコンをクリックした時
+ */
 chrome.browserAction.onClicked.addListener(async tab => {
   if (typeof ws === 'undefined') {
     await activate(tab);
