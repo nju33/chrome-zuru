@@ -211,11 +211,11 @@ const process = async () => {
     }
   })
   if (typeof file === 'undefined') {
-    throw new Error('ターゲットとなるファイルがありませんでした');
+    throw new Error('There was no target file');
   }
 
   if (ws.readyState !== 1) {
-    throw new Error('WebSocketとの接続ができません');
+    throw new Error('Can not connect with websocket');
   }
 
   // アクティベート化するファイル情報を
@@ -295,24 +295,47 @@ chrome.windows.onFocusChanged.addListener(windowId => {
         console.log(err);
       });
     }, 3000)
-  }); 
+  })); 
 });
 
+/**
+ * アイコンinactive化
+ */
+const setInactiveIcon = () => {
+  iconPath = chrome.runtime.getURL('icons/icon19!inactive.png');
+  chrome.browserAction.setIcon({path: iconPath}, noop);
+}
+
+/**
+ * アイコンactive化
+ */
+const setActiveIcon = () => {
+  iconPath = chrome.runtime.getURL('icons/icon19.png');
+  chrome.browserAction.setIcon({path: iconPath}, noop);
+}
+
+/**
+ * wsに接続済か
+ * @return {boolean}
+ */
+const connectedWS = ws => typeof ws !== 'undefined' && ws.readyState === 1
 const inactivate = async () => {
-  if (typeof ws !== 'undefined' && ws.readyState === 1) {
-    ws.send(
-      JSON.stringify({
-        type: 'UNSELECT_FILE'
-      })
-    );
-    setTimeout(() => {
+  if (!connectedWS(ws)) {
+    return
+  }
+  
+  await Promise.resolve(ws.send(JSON.stringify({type: 'UNSELECT_FILE'})))
+    .then(wait(1000))
+    .then(setState({active: false}))
+    .then(setInactiveIcon)
+    .then(() => {
       ws.close();
       ws = undefined;
-    }, 100);
+    });
   }
-  await setState({active: false});
-  iconPath = chrome.runtime.getURL('icons/icon19!inactive.png');
-  chrome.browserAction.setIcon({path: iconPath}, () => {});
+
+  await .then(() => {
+  });
 };
 
 const activate = async tab => {
@@ -320,16 +343,14 @@ const activate = async tab => {
   ws.onmessage = ev => {
     const action = JSON.parse(ev.data);
     // console.log(action);
-
     handleAction(action);
   }
   ws.onclose = () => {
     inactivate();
   };
+
   await waitConnection(ws);
-  iconPath = chrome.runtime.getURL('icons/icon19.png');
-  chrome.browserAction.setIcon({path: iconPath}, () => {});
-  await setState({active: true});
+  await setState({active: true}).then(setActiveIcon);
   await process(tab);
 };
 
