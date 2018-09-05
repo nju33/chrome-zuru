@@ -333,9 +333,6 @@ const inactivate = async () => {
       ws = undefined;
     });
   }
-
-  await .then(() => {
-  });
 };
 
 const activate = async tab => {
