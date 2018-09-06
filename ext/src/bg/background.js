@@ -2,6 +2,17 @@
  * @typedef {'INITIALIZE'|'CHANGE_POSITION'} ActionType
  */
 
+ /**
+  * @readonly
+  * @enum {number}
+  */
+const WebSocketReadyState = {
+  Connecting:	0,
+  Open: 1,
+  Closing: 2,
+  Closed: 3,
+};
+
 /**
  * 何もしない
  */
@@ -15,6 +26,10 @@ const noop = () => {};
  */
 const extensionOnMessage = (action, _, sendResponse) => {
   chrome.windows.getCurrent(currentWindow => {
+    if (currentWindow === -1) {
+      return;
+    }
+    
     switch (action.type) {
       // 送られてきたwindowステートで初期化
       case 'INITIALIZE': {
@@ -59,6 +74,10 @@ const handleAction = async action => {
     }
     case 'MOVE_ZURU_APP': {
       chrome.windows.getCurrent(currentWindow => {
+        if (currentWindow === -1) {
+          return;
+        }
+    
         const window = chrome.windows.update(
           currentWindow.id,
           {
@@ -116,6 +135,27 @@ const getCurrentTab = () => {
     chrome.tabs.getSelected(null, resolve);
   });
 };
+
+/**
+ * windowが削除される、または何かしらが原因でフォーカスが外れた時場合は、
+ * 無効と判断し、処理を終える
+ * 有効な場合はコールバックを実行
+ */
+const validWindow = cb => window => {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  if (window.id === -1) {
+    return;
+  }
+
+  if (!window.focused) {
+    return false;
+  }
+
+  return true;
+}
 
 /**
  * zuruアプリ側のwindow状態を取得
@@ -194,6 +234,58 @@ const tabInit = tab => {
 }
 
 let ws;
+let tryCount = 0;
+
+/**
+ * wsに接続済か
+ * @return {boolean}
+ */
+const connectedWS = ws => typeof ws !== 'undefined' && ws.readyState === WebSocketReadyState.Open
+const inactivate = async () => {
+  if (!connectedWS(ws)) {
+    setInactiveIcon();
+    ws = undefined;
+    try {
+      ws.close();
+    } catch (_) {}
+    return
+  }
+  
+  await Promise.resolve(ws.send(JSON.stringify({type: 'UNSELECT_FILE'})))
+    .then(wait(1000))
+    .then(setState({active: false}))
+    .then(setInactiveIcon)
+    .then(() => {
+      ws = undefined;
+      try {
+        ws.close();
+      } catch (_) {}
+    });
+};
+
+const activate = async tab => {
+  ws = new WebSocket('ws://localhost:33322');
+  ws.onmessage = ev => {
+    const action = JSON.parse(ev.data);
+    // console.log(action);
+    handleAction(action);
+  }
+  ws.onclose = inactivate;
+
+  await waitConnection(ws);
+  await setState({active: true}).then(setActiveIcon);
+  try {
+    await process(tab);
+  } catch (err) {
+    if (tryCount < 3 && err.message === 'Can not connect with websocket') {
+      tryCount++;
+      activate(tab);
+    } else {
+      tryCount = 0;
+    }
+  }
+};
+
 const process = async () => {
   if (typeof ws === 'undefined') {
     return;
@@ -210,13 +302,15 @@ const process = async () => {
       }
     }
   })
+
   if (typeof file === 'undefined') {
     throw new Error('There was no target file');
   }
 
-  if (ws.readyState !== 1) {
+  if (ws.readyState !== WebSocketReadyState.Open) {
     throw new Error('Can not connect with websocket');
   }
+  tryCount = 0;
 
   // アクティベート化するファイル情報を
   // zuruアプリへ送信
@@ -229,6 +323,10 @@ const process = async () => {
 
   await getWindow().then(windowState => {
     chrome.windows.getCurrent(currentWindow => {
+      if (currentWindow.id === -1) {
+        return;
+      }
+
       const nextState = {
         width: Number(windowState.width),
         height: Number(windowState.height),
@@ -266,22 +364,6 @@ chrome.tabs.onUpdated.addListener((_, __, tab) => {
   });
 });
 
-/**
- * windowが削除される、または何かしらが原因でフォーカスが外れた時場合は、
- * 無効と判断し、処理を終える
- * 有効な場合はコールバックを実行
- */
-const validWindow = cb => window => {
-  if (typeof window === 'undefined') {
-    return false;
-  }
-
-  if (!window.focused) {
-    return false;
-  }
-
-  return true;
-}
 
 /**
  *  windowが変わった時
@@ -314,47 +396,13 @@ const setActiveIcon = () => {
   chrome.browserAction.setIcon({path: iconPath}, noop);
 }
 
-/**
- * wsに接続済か
- * @return {boolean}
- */
-const connectedWS = ws => typeof ws !== 'undefined' && ws.readyState === 1
-const inactivate = async () => {
-  if (!connectedWS(ws)) {
-    return
-  }
-  
-  await Promise.resolve(ws.send(JSON.stringify({type: 'UNSELECT_FILE'})))
-    .then(wait(1000))
-    .then(setState({active: false}))
-    .then(setInactiveIcon)
-    .then(() => {
-      ws.close();
-      ws = undefined;
-    });
-  }
-};
-
-const activate = async tab => {
-  ws = new WebSocket('ws://localhost:33322');
-  ws.onmessage = ev => {
-    const action = JSON.parse(ev.data);
-    // console.log(action);
-    handleAction(action);
-  }
-  ws.onclose = () => {
-    inactivate();
-  };
-
-  await waitConnection(ws);
-  await setState({active: true}).then(setActiveIcon);
-  await process(tab);
-};
 
 /**
  *  右上の拡張アイコンをクリックした時
  */
 chrome.browserAction.onClicked.addListener(async tab => {
+  console.log(`browserAction start, ws: ${ws}`);
+
   if (typeof ws === 'undefined') {
     await activate(tab);
   } else {

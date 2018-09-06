@@ -8,7 +8,7 @@
     "ext/src/*"
   ],
   "scripts": {
-    "dev": "chokidar 'src/**/*.js' -c 'npm-run-all --parallel bg.dev ba.dev i.dev'",
+    "dev": "chokidar 'ext/src/**/*.js' -i 'ext/src/**/dist/**/*.js' -c 'npm-run-all --parallel bg.dev ba.dev i.dev'",
     "build": "npm-run-all --parallel bg.build ba.build i.build",
     "bg.dev": "cd ext/src/bg; yarn dev",
     "bg.build": "cd ext/src/bg; yarn build",
