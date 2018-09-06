@@ -199,7 +199,7 @@ const parseFilename = filenameWithPath => {
 const formatUrl = url => {
   return url
     .replace(/https?:\/\//, '')
-    .replace('/', '!')
+    .replace(/\//g, '!')
     .replace(/!$/, '');
 };
 
@@ -293,8 +293,10 @@ const process = async () => {
 
   const tab = await getCurrentTab().then(tabInit);
   const formatedTabUrl = formatUrl(tab.url);
+  console.log('formatedTabUrl: ', formatedTabUrl);
   // ターゲットとなるファイル
   const file = await getFiles().then(files => {
+    console.log('Got files ', files);
     for (const idx in files) {
       const {filename, url} = parseFilename(files[idx].filename);
       if (formatedTabUrl === url) {
